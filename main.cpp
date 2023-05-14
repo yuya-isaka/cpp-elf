@@ -24,21 +24,15 @@ void validationElfHeader(Elf_Ehdr *ehdr)
 	// ELFファイルかどうかを確認します
 	if (!((ehdr->e_ident[EI_MAG0] == ELFMAG0) && (ehdr->e_ident[EI_MAG1] == ELFMAG1) &&
 		  (ehdr->e_ident[EI_MAG2] == ELFMAG2) && (ehdr->e_ident[EI_MAG3] == ELFMAG3)))
-	{
 		throw std::runtime_error("This is not an ELF file.\n");
-	}
 
 	// ELFファイルが64ビットかどうかを確認します
 	if (ehdr->e_ident[EI_CLASS] != ELFCLASS64)
-	{
 		throw std::runtime_error("Unknown class. (" + std::to_string(static_cast<int>(ehdr->e_ident[EI_CLASS])) + ")\n");
-	}
 
 	// ELFファイルがリトルエンディアンかどうかを確認します
 	if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB)
-	{
 		throw std::runtime_error("Unknown endian. (" + std::to_string(static_cast<int>(ehdr->e_ident[EI_DATA])) + ")\n");
-	}
 }
 
 Elf_Shdr *printSections(char *head, Elf_Ehdr *ehdr, Elf_Shdr *shstr)
@@ -66,9 +60,7 @@ Elf_Shdr *printSections(char *head, Elf_Ehdr *ehdr, Elf_Shdr *shstr)
 		// 		これは、セクションヘッダー文字列テーブルを指すセクションヘッダーです
 		//		あとで、シンボルの名前を取得するために使います
 		if (!strcmp(sname, ".strtab"))
-		{
 			symstr = shdr;
-		}
 	}
 
 	return symstr;
@@ -98,27 +90,19 @@ void printSegments(char *head, Elf_Ehdr *ehdr, Elf_Shdr *shstr)
 
 			// セクションがBSSセクションの場合、サイズは0です
 			if (shdr->sh_type != SHT_NOBITS)
-			{
 				size = shdr->sh_size;
-			}
 			else
-			{
 				size = 0;
-			}
 
 			// セクションのオフセットがセグメントのオフセットより小さい場合、セクションはセグメントに含まれていません
 			// 		これは、セクションがセグメントの前にあることを意味します
 			if (shdr->sh_offset < phdr->p_offset)
-			{
 				continue;
-			}
 
 			// セクションのオフセット + セクションのサイズがセグメントのオフセット + セグメントのサイズより大きい場合、セクションはセグメントに含まれていません
 			// 		これは、セクションがセグメントの後ろにあることを意味します
 			if (shdr->sh_offset + size > phdr->p_offset + phdr->p_filesz)
-			{
 				continue;
-			}
 
 			// セクションの名前を取得します
 			// 		先頭 + セクションヘッダー文字列テーブルのオフセット + セクションヘッダーの名前のオフセット
@@ -150,9 +134,7 @@ Elf_Shdr *printSymbols(char *head, Elf_Ehdr *ehdr, Elf_Shdr *symstr)
 
 		// iセクションがシンボルテーブルでない場合、次のセクションへ
 		if (shdr->sh_type != SHT_SYMTAB)
-		{
 			continue;
-		}
 
 		sym = shdr;
 
@@ -165,9 +147,7 @@ Elf_Shdr *printSymbols(char *head, Elf_Ehdr *ehdr, Elf_Shdr *symstr)
 
 			// シンボルの名前がない場合、次のシンボルへ
 			if (!symp->st_name)
-			{
 				continue;
-			}
 
 			// シンボルの情報を表示します
 			// 		ELF64_ST_TYPEは、st_infoフィールドの下位4ビットを取得するマクロです
@@ -199,9 +179,7 @@ void printRelocations(char *head, Elf_Ehdr *ehdr, Elf_Shdr *symstr, Elf_Shdr *sy
 
 		// iセクションがリロケーションテーブルでない場合、次のセクションへ
 		if ((rel->sh_type != SHT_REL) && (rel->sh_type != SHT_RELA))
-		{
 			continue;
-		}
 
 		// リロケーションテーブルの数だけ繰り返します
 		for (long unsigned int j = 0; j < rel->sh_size / rel->sh_entsize; j++)
@@ -217,9 +195,7 @@ void printRelocations(char *head, Elf_Ehdr *ehdr, Elf_Shdr *symstr, Elf_Shdr *sy
 
 			// リロケーションのシンボルがない場合、次のリロケーションへ
 			if (!symp->st_name)
-			{
 				continue;
-			}
 
 			// リロケーションの情報を表示します
 			std::cout << "\t[" << j << "]\t" << ELF64_R_SYM(relp->r_info) << "\t"
@@ -301,7 +277,7 @@ int main(int argc, char *argv[])
 	// 			PROT_READとは、マッピングされたメモリを読み込み専用にするためのフラグです
 	// 			MAP_SHAREDとは、マッピングされたメモリを他のプロセスと共有するためのフラグです
 	//			char *にしておくと、strcmpなどの文字列操作ができて便利です
-	char *head = reinterpret_cast<char *>(mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0));
+	char *head = reinterpret_cast<char *>(mmap(nullptr, sb.st_size, PROT_READ, MAP_SHARED, fd, 0));
 	if (head == MAP_FAILED)
 	{
 		std::cerr << "Failed to map file into memory" << std::endl;
