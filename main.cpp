@@ -13,6 +13,11 @@ using Elf_Phdr = Elf64_Phdr;
 using Elf_Sym = Elf64_Sym;
 using Elf_Rel = Elf64_Rel;
 
+Elf_Shdr *getSectionHeader(char *head, Elf_Ehdr *ehdr, int index)
+{
+	return reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * index);
+}
+
 // ELFファイルのヘッダーを検証します
 void validationElfHeader(Elf_Ehdr *ehdr)
 {
@@ -48,7 +53,7 @@ Elf_Shdr *printSections(char *head, Elf_Ehdr *ehdr, Elf_Shdr *shstr)
 	{
 		// セクションヘッダーを取得します
 		// 		先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダーのインデックス
-		Elf_Shdr *shdr = reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * i);
+		Elf_Shdr *shdr = getSectionHeader(head, ehdr, i);
 
 		// セクションヘッダーの名前を取得します
 		// 		先頭 + セクションヘッダー文字列テーブルのオフセット + セクションヘッダーの名前のオフセット
@@ -86,7 +91,7 @@ void printSegments(char *head, Elf_Ehdr *ehdr, Elf_Shdr *shstr)
 		{
 			// セクションヘッダーを取得します
 			// 		先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダーのインデックス
-			Elf_Shdr *shdr = reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * j);
+			Elf_Shdr *shdr = getSectionHeader(head, ehdr, j);
 
 			// セクションヘッダーのサイズ
 			int size;
@@ -122,6 +127,7 @@ void printSegments(char *head, Elf_Ehdr *ehdr, Elf_Shdr *shstr)
 			// セクションの名前を表示します
 			std::cout << sname << " ";
 		}
+
 		std::cout << "\n";
 	}
 }
@@ -140,7 +146,7 @@ Elf_Shdr *printSymbols(char *head, Elf_Ehdr *ehdr, Elf_Shdr *symstr)
 		// 		先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダーのインデックス
 		// リロケーションの情報を表示する際に使うため、セクションヘッダー(シンボルテーブル)を保存します
 		// 		リロケーションエントリに登録されているシンボルを取得する際に参照します
-		Elf_Shdr *shdr = reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * i);
+		Elf_Shdr *shdr = getSectionHeader(head, ehdr, i);
 
 		// iセクションがシンボルテーブルでない場合、次のセクションへ
 		if (shdr->sh_type != SHT_SYMTAB)
@@ -189,7 +195,7 @@ void printRelocations(char *head, Elf_Ehdr *ehdr, Elf_Shdr *symstr, Elf_Shdr *sy
 	{
 		// セクションヘッダーを取得します
 		// 		先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダーのインデックス
-		Elf_Shdr *rel = reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * i);
+		Elf_Shdr *rel = getSectionHeader(head, ehdr, i);
 
 		// iセクションがリロケーションテーブルでない場合、次のセクションへ
 		if ((rel->sh_type != SHT_REL) && (rel->sh_type != SHT_RELA))
