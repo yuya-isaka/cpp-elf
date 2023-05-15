@@ -15,6 +15,7 @@ using Elf_Rel = Elf64_Rel;
 
 Elf_Shdr *getSectionHeader(char *head, Elf_Ehdr *ehdr, int index)
 {
+	// 先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダーのインデックス
 	return reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * index);
 }
 
@@ -46,7 +47,6 @@ Elf_Shdr *printSections(char *head, Elf_Ehdr *ehdr, Elf_Shdr *shstr)
 	for (int i = 0; i < ehdr->e_shnum; i++)
 	{
 		// セクションヘッダーを取得します
-		// 		先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダーのインデックス
 		Elf_Shdr *shdr = getSectionHeader(head, ehdr, i);
 
 		// セクションヘッダーの名前を取得します
