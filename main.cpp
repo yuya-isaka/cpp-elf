@@ -13,12 +13,6 @@ using Elf_Phdr = Elf64_Phdr;
 using Elf_Sym = Elf64_Sym;
 using Elf_Rel = Elf64_Rel;
 
-Elf_Shdr *getSectionHeader(char *head, Elf_Ehdr *ehdr, int index)
-{
-	// 先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダーのインデックス
-	return reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * index);
-}
-
 // ELFファイルのヘッダーを検証します
 void validationElfHeader(Elf_Ehdr *ehdr)
 {
@@ -34,6 +28,12 @@ void validationElfHeader(Elf_Ehdr *ehdr)
 	// ELFファイルがリトルエンディアンかどうかを確認します
 	if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB)
 		throw std::runtime_error("Unknown endian. (" + std::to_string(static_cast<int>(ehdr->e_ident[EI_DATA])) + ")\n");
+}
+
+Elf_Shdr *getSectionHeader(char *head, Elf_Ehdr *ehdr, int index)
+{
+	// 先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダーのインデックス
+	return reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * index);
 }
 
 Elf_Shdr *printSections(char *head, Elf_Ehdr *ehdr, Elf_Shdr *shstr)
@@ -205,45 +205,32 @@ void printRelocations(char *head, Elf_Ehdr *ehdr, Elf_Shdr *symstr, Elf_Shdr *sy
 }
 
 // ファイルの内容を解析し、ELFファイルの情報を表示します
-static int elfdump(char *head)
+void elfdump(char *head)
 {
-	try
-	{
-		// ELFファイルのヘッダー
-		// 		ファイルの内容の先頭をELFヘッダーにキャストします
-		// 		ポインタ型同士のキャストはreinterpret_castを使います
-		Elf_Ehdr *ehdr = reinterpret_cast<Elf_Ehdr *>(head);
+	// ELFファイルのヘッダー
+	// 		ファイルの内容の先頭をELFヘッダーにキャストします
+	// 		ポインタ型同士のキャストはreinterpret_castを使います
+	Elf_Ehdr *ehdr = reinterpret_cast<Elf_Ehdr *>(head);
 
-		// ELFファイルかどうかを確認します
-		validationElfHeader(ehdr);
+	// ELFファイルかどうかを確認します
+	validationElfHeader(ehdr);
 
-		// 可変長のセクション名を格納するセクションヘッダを取得
-		// 		先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダー文字列テーブルのインデックス
-		Elf_Shdr *shstr = reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
+	// 可変長のセクション名を格納するセクションヘッダを取得
+	// 		先頭 + セクションヘッダーのオフセット + セクションヘッダーのサイズ * セクションヘッダー文字列テーブルのインデックス
+	Elf_Shdr *shstr = reinterpret_cast<Elf_Shdr *>(head + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
 
-		// 可変長のシンボル名を格納するセクションヘッダーを格納する変数
-		// 表示させながら取得
-		Elf_Shdr *symstr = printSections(head, ehdr, shstr);
+	// 可変長のシンボル名を格納するセクションヘッダーを格納する変数
+	// 表示させながら取得
+	Elf_Shdr *symstr = printSections(head, ehdr, shstr);
 
-		printSegments(head, ehdr, shstr);
+	printSegments(head, ehdr, shstr);
 
-		// シンボルテーブルを格納する変数
-		Elf_Shdr *sym = printSymbols(head, ehdr, symstr);
+	// シンボルテーブルを格納する変数
+	Elf_Shdr *sym = printSymbols(head, ehdr, symstr);
 
-		printRelocations(head, ehdr, symstr, sym);
-	}
-	catch (const std::exception &e)
-	{
-		std::cerr << "Error: " << e.what() << std::endl;
-		return 1;
-	}
-
-	return 0;
+	printRelocations(head, ehdr, symstr, sym);
 }
 
-// メイン関数では、コマンドライン引数として指定されたELFファイルを開き、その内容をメモリにマッピングします
-// マッピングされた内容はelfdump関数に渡され、ELFファイルの情報が表示されます
-// マッピングが終わった後、メモリから解放し、ファイルを閉じます
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
@@ -257,14 +244,14 @@ int main(int argc, char *argv[])
 	if (fd < 0)
 	{
 		std::cerr << "Failed to open file: " << argv[1] << std::endl;
-		exit(1);
+		return 1;
 	}
 
 	// ファイルの情報を取得します
 	// 		ファイルの情報は、stat構造体に格納されます
 	// 		stat構造体は、ファイルの情報を格納する構造体です
-	struct stat sb;
-	if (fstat(fd, &sb) == -1)
+	struct stat filestruct;
+	if (fstat(fd, &filestruct) < 0)
 	{
 		std::cerr << "Failed to get file information" << std::endl;
 		close(fd);
@@ -277,7 +264,7 @@ int main(int argc, char *argv[])
 	// 			PROT_READとは、マッピングされたメモリを読み込み専用にするためのフラグです
 	// 			MAP_SHAREDとは、マッピングされたメモリを他のプロセスと共有するためのフラグです
 	//			char *にしておくと、strcmpなどの文字列操作ができて便利です
-	char *head = reinterpret_cast<char *>(mmap(nullptr, sb.st_size, PROT_READ, MAP_SHARED, fd, 0));
+	char *head = reinterpret_cast<char *>(mmap(nullptr, filestruct.st_size, PROT_READ, MAP_SHARED, fd, 0));
 	if (head == MAP_FAILED)
 	{
 		std::cerr << "Failed to map file into memory" << std::endl;
@@ -285,26 +272,21 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	// ELFファイルの情報を表示します
 	try
 	{
 		elfdump(head);
 	}
-	// 例外が発生した場合、例外の内容を表示します
 	catch (const std::exception &e)
 	{
 		// 例外の内容は、what()メソッドで取得できます
 		std::cerr << "Failed to dump ELF file: " << e.what() << std::endl;
-		munmap(head, sb.st_size);
+		munmap(head, filestruct.st_size);
 		close(fd);
 		return 1;
 	}
 
-	// メモリからファイルの内容を解放します
-	// 		解放するメモリの先頭アドレスとサイズを指定します
-	munmap(head, sb.st_size);
-
-	// ファイルを閉じます
+	// 解放するメモリの先頭アドレスとサイズを指定します
+	munmap(head, filestruct.st_size);
 	close(fd);
 
 	return 0;

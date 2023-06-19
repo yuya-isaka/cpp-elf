@@ -6,7 +6,7 @@ all: elfreader
 elfreader: main.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-run: elfreader
+test: elfreader
 	./elfreader ./ctest/elfsamp.o
 	./elfreader ./ctest/elfsamp
 
